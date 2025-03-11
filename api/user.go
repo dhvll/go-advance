@@ -1,14 +1,13 @@
 package api
 
 import (
-	"log"
 	"net/http"
 	"time"
 
 	db "github.com/dhvll/go-advance/db/sqlc"
 	"github.com/dhvll/go-advance/util"
 	"github.com/gin-gonic/gin"
-	"github.com/lib/pq"
+	"github.com/jackc/pgconn"
 )
 
 type createUserRequest struct {
@@ -59,13 +58,11 @@ func (server *Server) createUser(ctx *gin.Context) {
 	user, err := server.store.CreateUser(ctx, arg)
 
 	if err != nil {
-		if pqErr, ok := err.(*pq.Error); ok {
-			switch pqErr.Code.Name() {
-			case "unique_violation":
+		if pgErr, ok := err.(*pgconn.PgError); ok {
+			if pgErr.Code == "23505" { // unique_violation
 				ctx.JSON(http.StatusForbidden, errorResponse(err))
 				return
 			}
-			log.Println()
 		}
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
